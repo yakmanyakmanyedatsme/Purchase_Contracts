@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple, Callable, TypeVar
 import nltk
+from google.cloud import storage
+import json
 
 T1 = TypeVar('T')
 T2 = TypeVar('T')
@@ -10,7 +12,7 @@ class report():
     def __init__(self, file_list: List[str] = None, files_text: Dict[str, str] = None) -> None:
         self.text_content = {}
         self.files_text = None
-        if files_text != None:
+        if files_text is not None:
             self.files_text = files_text
         else:
             self.files_list = file_list
@@ -18,6 +20,7 @@ class report():
             for file in self.files_list:
                 with open(file) as f:
                     self.files_text.append(f.read())
+
     @staticmethod
     def get_ngrams(myString: str, num: int) -> T3:
         def stem_remove_list(my_text: T3) -> T3:
@@ -36,8 +39,8 @@ class report():
             temp.append(grams)
         return(temp)
 
-    def apply_all_documents(self, function: Callable[..., List[T2]], num: str = 3, 
-                            reset_content: bool = True) -> None:
+    def apply_all_documents(self, function: Callable[..., List[T2]], 
+                            num: str = 3, reset_content: bool = True) -> None:
         if reset_content is True:
             self.text_content = {}
 
@@ -48,9 +51,8 @@ class report():
                 except Exception as e:
                     print(str(e))
                     
-    def subset_ngram(self, sub: Tuple[str,...]) -> None:
+    def subset_ngram(self, sub: Tuple[str, ...]) -> None:
         temp = {}
-        
         for key, ngram in self.text_content.items():
             temp[key] = []
             for gram in ngram:
@@ -59,9 +61,22 @@ class report():
                     if gram[0] not in sub:
                         cond = False
                 else:
-                    for i in range(0,len(sub)):
+                    for i in range(0, len(sub)):
                         if gram[i] not in sub[i]:
                             cond = False
                 if cond:
                     temp[key].append(gram)
         return(temp)
+
+    @staticmethod
+    def create_json(json_object: str, filename: str, bucket_name: str):
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(filename)
+        # upload the blob 
+        blob.upload_from_string(
+            data=json.dumps(json_object),
+            content_type='application/json'
+            )
+        result = filename + ' upload complete'
+        return {'response': result}
